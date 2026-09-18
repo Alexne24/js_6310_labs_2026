@@ -27,7 +27,6 @@ function getReviewerNumber(number, lab) {
     let stud = 30;
     let sum = number + lab;
     let rev = sum % stud;
-    rev = rev;
     return rev;
 }
 
@@ -50,49 +49,53 @@ function calculate(a, b, operation) {
         return a * b;
     } else if (operation === '/') {
         if (b === 0) {
-            return "Фолс";
+            return "Деление на ноль";
         }
         return a / b;
     } else {
-        return "Фолс";
+        return "Неизвестная операция";
     }
 }
 function calculateArea(figure, ...params) {
     // 2.4 Напишите функцию для определения площади фигур 'circle', 'rectangle', 'triangle'
     // Используйте switch.
-        if (figure === 'circle') {
-        let radius = params[0];
-        if (radius <= 0) {
-            return "Фолс";
+        switch (figure) {
+        case 'circle': {
+            let radius = params[0];
+            if (radius <= 0) {
+                return "Радиус должен быть положительным";
+            }
+            return Math.PI * radius * radius;
         }
-        return Math.PI * radius * radius;
-    } else if (figure === 'rectangle') {
-        let width = params[0];
-        let height = params[1];
-        if (width <= 0 || height <= 0) {
-            return "Фолс";
+        case 'rectangle': {
+            let width = params[0];
+            let height = params[1];
+            if (width <= 0 || height <= 0) {
+                return "Стороны должны быть положительными";
+            }
+            return width * height;
         }
-        return width * height;
-    } else if (figure === 'triangle') {
-        let base = params[0];
-        let height = params[1];
-        if (base <= 0 || height <= 0) {
-            return "Фолс";
+        case 'triangle': {
+            let base = params[0];
+            let height = params[1];
+            if (base <= 0 || height <= 0) {
+                return "Основание и высота должны быть положительными";
+            }
+            return 0.5 * base * height;
         }
-        return 0.5 * base * height;
-    } else {
-        return "Фолс";
+        default:
+            return "Неизвестная фигура";
     }
 }
 
 // 2.5 Стрелочные функции
 const reverseString = (str) => {
     // Функция возвращает перевернутую строку
-    let res = "";
+    let  = "";
     for (let i = str.length - 1; i >= 0; i--) {
-        res = res + str[i];
+        r = r + str[i];
     }
-    return res;
+    return r;
 };
 
 const getRandomNumber = (min, max) => {
@@ -207,7 +210,7 @@ function processArrays() {
     // 4. Используйте find для поиска пользователя с именем "Виктория"
     /*const victoria =  ваш код */
 
-        const victoria = users.find(function(user) {
+    const victoria = users.find(function(user) {
         return user.name === "Виктория";
     });
     console.log("Виктория:", victoria);
@@ -577,6 +580,14 @@ function runTests() {
     myNewCar.displayInfo();
 
     console.log('Всего создано транспортных средств:', Vehicle.getTotalVehicles());
+
+    console.log("Площадь круга:", calculateArea('circle', 5));
+    console.log("Площадь прямоугольника:", calculateArea('rectangle', 4, 5));
+    console.log("Площадь треугольника:", calculateArea('triangle', 6, 4));
+    
+    console.log("Переворот:", reverseString('hello'));
+    console.log("toggleAvailability:", book.toggleAvailability());
+    console.log("addGrade:", student.addGrade('physics', 88));
 
     simpleTask();
 
