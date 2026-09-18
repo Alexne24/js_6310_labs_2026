@@ -91,7 +91,7 @@ function calculateArea(figure, ...params) {
 // 2.5 Стрелочные функции
 const reverseString = (str) => {
     // Функция возвращает перевернутую строку
-    let  = "";
+    let r = "";
     for (let i = str.length - 1; i >= 0; i--) {
         r = r + str[i];
     }
@@ -588,6 +588,60 @@ function runTests() {
     console.log("Переворот:", reverseString('hello'));
     console.log("toggleAvailability:", book.toggleAvailability());
     console.log("addGrade:", student.addGrade('physics', 88));
+
+    console.log(`getVariant(16, 4) = ${getVariant(16, 4)}`);
+    console.log(`getVariant(17, 4) = ${getVariant(17, 4)}`);
+    console.log(`getVariant(18, 4) = ${getVariant(18, 4)}`);
+
+    for (let i = 0; i < 5; i++) {
+        const r = getRandomNumber(1, 10);
+        console.log(`Случайное число: ${r}`);
+        console.assert(r >= 1 && r <= 10, "getRandomNumber вышел за диапазон");
+    }
+    const addedTask = taskManager.addTask("Тестовая задача", "high");
+    console.log(`Добавлена: id=${addedTask.id}, title=${addedTask.title}, priority=${addedTask.priority}`);
+    console.assert(addedTask.completed === false, "Новая задача должна быть completed: false");
+    console.assert(addedTask.priority === "high", "Приоритет должен быть high");
+
+    const completedTask = taskManager.completeTask(addedTask.id);
+    console.log(`Задача #${completedTask.id} completed = ${completedTask.completed}`);
+    console.assert(completedTask.completed === true, "completeTask должен ставить completed: true");
+
+    const doneTasks = taskManager.getTasksByStatus(true);
+    const undoneTasks = taskManager.getTasksByStatus(false);
+    console.log(`Выполненных: ${doneTasks.length}`);
+    console.log(`Невыполненных: ${undoneTasks.length}`);
+    console.assert(doneTasks.every(t => t.completed === true), "getTasksByStatus(true) вернул неверные задачи");
+    console.assert(undoneTasks.every(t => t.completed === false), "getTasksByStatus(false) вернул неверные задачи");
+
+    const carOld = new Vehicle('A', 'B', 2000);
+    const carNew = new Vehicle('C', 'D', 2020);
+    const diff = Vehicle.compareAge(carOld, carNew);
+    console.log(`Разница в возрасте: ${diff} лет`);
+    console.assert(diff === Math.abs(carOld.age - carNew.age), "compareAge вернул неверную разницу");
+    const testCar = new Vehicle('Test', 'Model', 2015);
+    console.log(`Год до изменения: ${testCar.year}`);
+    testCar.year = 2010;
+    console.log(`Год после изменения: ${testCar.year}`);
+    console.assert(testCar.year === 2010, "Сеттер year не изменил год");
+    testCar.year = 3000;
+    console.log(`Год после попытки поставить 3000: ${testCar.year}`);
+    console.assert(testCar.year === 2010, "Сеттер year должен отклонить год больше текущего");
+
+    console.log(`"Passw0rd!" -> ${validatePassword("Passw0rd!")}`);
+    console.log(`"password" -> ${validatePassword("password")}`);
+    console.log(`"Pass1!" -> ${validatePassword("Pass1!")}`);
+
+    console.log(`"+7 (999) 123-45-67" -> ${validatePhone("+7 (999) 123-45-67")}`);
+    console.log(`"8 (999) 123-45-67" -> ${validatePhone("8 (999) 123-45-67")}`);
+    console.log(`"89991234567" -> ${validatePhone("89991234567")}`);
+    console.log(`"1234567890" -> ${validatePhone("1234567890")}`);
+
+
+    console.log(`"15.05.2026" -> ${validateDate("15.05.2026")}`);
+    console.log(`"01.01.1900" -> ${validateDate("01.01.1900")}`);
+    console.log(`"32.01.2024" -> ${validateDate("32.01.2024")}`);
+    console.log(`"15.13.2024" -> ${validateDate("15.13.2024")}`);
 
     simpleTask();
 
