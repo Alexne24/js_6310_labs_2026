@@ -1,8 +1,8 @@
 {
   "testEnvironment": "node",
   "collectCoverageFrom": [
-    "src/utils/**/*.js",
-    "src/handlers/**/*.js",
+    "src/**/*.js",
+    "!src/index.js",
     "!src/utils/index.js"
   ],
   "coverageThreshold": {

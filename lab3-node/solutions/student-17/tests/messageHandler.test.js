@@ -71,6 +71,26 @@ describe('handleCommand', () => {
     const s = new TestStorage();
     expect(handleCommand({ command: '/rate', userId: 1, storage: s })[0].text).toMatch(/нет прочитанных/);
   });
+  it('/page empty', () => {
+    const s = new TestStorage();
+    const r = handleCommand({ command: '/page', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/нет книг/);
+    expect(s.getState(1, 'fsm')).toBe('IDLE');
+  });
+  it('/page with reading books', () => {
+    const s = new TestStorage();
+    s.addBook(1, { title: 'Дюна', author: 'Герберт', status: 'reading', totalPages: 500 });
+    const r = handleCommand({ command: '/page', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/Дюна/);
+    expect(s.getState(1, 'fsm')).toBe('AWAIT_PAGE_BOOK');
+  });
+  it('/rate with read books', () => {
+    const s = new TestStorage();
+    s.addBook(1, { title: 'A', author: 'B', status: 'read' });
+    const r = handleCommand({ command: '/rate', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/Выберите книгу/);
+    expect(s.getState(1, 'fsm')).toBe('AWAIT_RATE_BOOK');
+  });
   it('unknown command', () => {
     const s = new TestStorage();
     expect(handleCommand({ command: '/xxx', userId: 1, storage: s })[0].text).toMatch(/Не понял/);
@@ -144,6 +164,72 @@ describe('handleText — FSM', () => {
   });
 });
 
+describe('handleText AWAIT_PAGE_BOOK', () => {
+  it('invalid id', () => {
+    const s = new TestStorage();
+    s.setState(1, 'fsm', 'AWAIT_PAGE_BOOK');
+    const r = handleText({ text: 'abc', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/номер/);
+  });
+  it('book not found', () => {
+    const s = new TestStorage();
+    s.setState(1, 'fsm', 'AWAIT_PAGE_BOOK');
+    const r = handleText({ text: '#99', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/не найдена/);
+  });
+  it('book without totalPages', () => {
+    const s = new TestStorage();
+    s.addBook(1, { title: 'A', author: 'B', status: 'reading', totalPages: 0 });
+    s.setState(1, 'fsm', 'AWAIT_PAGE_BOOK');
+    const r = handleText({ text: '#1', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/не указано/);
+  });
+  it('moves to AWAIT_PAGE_VALUE', () => {
+    const s = new TestStorage();
+    s.addBook(1, { title: 'A', author: 'B', status: 'reading', totalPages: 500 });
+    s.setState(1, 'fsm', 'AWAIT_PAGE_BOOK');
+    handleText({ text: '#1', userId: 1, storage: s });
+    expect(s.getState(1, 'fsm')).toBe('AWAIT_PAGE_VALUE');
+  });
+});
+
+describe('handleText AWAIT_PAGE_VALUE', () => {
+  it('updates current page', () => {
+    const s = new TestStorage();
+    const b = s.addBook(1, { title: 'A', author: 'B', status: 'reading', totalPages: 500 });
+    s.setState(1, 'fsm', 'AWAIT_PAGE_VALUE');
+    s.setState(1, 'ctx', { bookId: b.id });
+    const r = handleText({ text: '150', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/150\/500/);
+    expect(r[0].text).toMatch(/30%/);
+    expect(s.getState(1, 'fsm')).toBe('IDLE');
+  });
+  it('reaches 100% and marks as read', () => {
+    const s = new TestStorage();
+    const b = s.addBook(1, { title: 'A', author: 'B', status: 'reading', totalPages: 500 });
+    s.setState(1, 'fsm', 'AWAIT_PAGE_VALUE');
+    s.setState(1, 'ctx', { bookId: b.id });
+    const r = handleText({ text: '500', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/100%/);
+    expect(s.getBooks(1, 'read').length).toBe(1);
+  });
+  it('rejects invalid number', () => {
+    const s = new TestStorage();
+    const b = s.addBook(1, { title: 'A', author: 'B', status: 'reading', totalPages: 500 });
+    s.setState(1, 'fsm', 'AWAIT_PAGE_VALUE');
+    s.setState(1, 'ctx', { bookId: b.id });
+    const r = handleText({ text: 'abc', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/целое число/);
+  });
+  it('book not found', () => {
+    const s = new TestStorage();
+    s.setState(1, 'fsm', 'AWAIT_PAGE_VALUE');
+    s.setState(1, 'ctx', { bookId: 999 });
+    const r = handleText({ text: '10', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/не найдена/);
+  });
+});
+
 describe('handleCallback', () => {
   it('status -> pages', () => {
     const s = new TestStorage();
@@ -154,12 +240,22 @@ describe('handleCallback', () => {
   });
   it('filter empty', () => {
     const s = new TestStorage();
+    s.setState(1, 'fsm', 'AWAIT_FILTER');
     expect(handleCallback({ data: 'filter:read', userId: 1, storage: s })[0].text).toMatch(/Нет книг/);
   });
   it('filter non-empty', () => {
     const s = new TestStorage();
     s.addBook(1, { title: 'A', author: 'B', status: 'read' });
+    s.setState(1, 'fsm', 'AWAIT_FILTER');
     expect(handleCallback({ data: 'filter:read', userId: 1, storage: s })[0].text).toMatch(/Ваши книги/);
+  });
+  it('old filter button does not interrupt add_book', () => {
+    const s = new TestStorage();
+    s.setState(1, 'fsm', 'AWAIT_STATUS');
+    s.setState(1, 'ctx', { title: 'A', author: 'B' });
+    const r = handleCallback({ data: 'filter:read', userId: 1, storage: s });
+    expect(r[0].text).toMatch(/устарела/);
+    expect(s.getState(1, 'fsm')).toBe('AWAIT_STATUS');
   });
   it('unknown', () => {
     const s = new TestStorage();

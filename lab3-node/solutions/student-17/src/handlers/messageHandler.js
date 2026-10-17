@@ -12,6 +12,8 @@ export const STATE = {
   AWAIT_RATE_BOOK: 'AWAIT_RATE_BOOK',
   AWAIT_RATE_VALUE: 'AWAIT_RATE_VALUE',
   AWAIT_FILTER: 'AWAIT_FILTER',
+  AWAIT_PAGE_BOOK: 'AWAIT_PAGE_BOOK',
+  AWAIT_PAGE_VALUE: 'AWAIT_PAGE_VALUE',
 };
 
 export const keyboards = {
@@ -19,7 +21,8 @@ export const keyboards = {
     reply_markup: {
       keyboard: [
         [{ text: '/add_book' }, { text: '/collection' }],
-        [{ text: '/rate' }, { text: '/help' }],
+        [{ text: '/page' }, { text: '/rate' }],
+        [{ text: '/help' }],
       ],
       one_time: false,
     },
@@ -82,6 +85,7 @@ function helpHint() {
     text: 'Не понял команду. Что можно сделать:\n'
       + '/add_book — добавить книгу\n'
       + '/collection — посмотреть коллекцию\n'
+      + '/page — обновить текущую страницу\n'
       + '/rate — оценить прочитанную книгу\n'
       + '/help — справка',
     options: keyboards.main,
@@ -97,6 +101,7 @@ export function handleCommand({ command, userId, storage }) {
           + 'Выберите действие кнопкой ниже или введите команду вручную:\n'
           + '/add_book — добавить книгу\n'
           + '/collection — коллекция\n'
+          + '/page — обновить текущую страницу\n'
           + '/rate — оценить книгу\n'
           + '/help — помощь',
       options: keyboards.main,
@@ -105,6 +110,7 @@ export function handleCommand({ command, userId, storage }) {
     return [{
       text: '/add_book — добавить книгу (название → автор → статус → страницы)\n'
           + '/collection — коллекция с фильтром и прогрессом\n'
+          + '/page — указать, сколько страниц уже прочитано\n'
           + '/rate — оценить прочитанную книгу',
       options: keyboards.main,
     }];
@@ -114,6 +120,21 @@ export function handleCommand({ command, userId, storage }) {
   case '/collection':
     setState(storage, userId, STATE.AWAIT_FILTER);
     return [{ text: 'Выберите фильтр:', options: keyboards.filter }];
+  case '/page': {
+    const reading = storage.getBooks(userId, 'reading');
+    if (reading.length === 0) {
+      setState(storage, userId, STATE.IDLE);
+      return [{
+        text: 'У вас нет книг со статусом «читаю», к которым можно применить прогресс.',
+        options: keyboards.main,
+      }];
+    }
+    const list = reading
+      .map((b) => `#${b.id} — ${b.title} (${b.currentPage}/${b.totalPages} стр.)`)
+      .join('\n');
+    setState(storage, userId, STATE.AWAIT_PAGE_BOOK);
+    return [{ text: `Выберите книгу для обновления прогресса:\n${list}` }];
+  }
   case '/rate': {
     const read = storage.getBooks(userId, 'read');
     if (read.length === 0) {
@@ -174,6 +195,52 @@ export function handleText({ text, userId, storage }) {
       options: keyboards.main,
     }];
   }
+  case STATE.AWAIT_PAGE_BOOK: {
+    const v = parseBookId(text);
+    if (!v.ok) return [{ text: v.error }];
+    const book = storage.getBooks(userId, 'reading').find((b) => b.id === v.value);
+    if (!book) return [{ text: 'Книга со статусом «читаю» с таким номером не найдена.' }];
+    if (!book.totalPages) {
+      setState(storage, userId, STATE.IDLE);
+      return [{
+        text: `У книги «${book.title}» не указано общее число страниц, прогресс посчитать не получится.`,
+        options: keyboards.main,
+      }];
+    }
+    setState(storage, userId, STATE.AWAIT_PAGE_VALUE, { bookId: v.value });
+    return [{
+      text: `Сколько страниц уже прочитано в «${book.title}»? (всего ${book.totalPages})`,
+    }];
+  }
+  case STATE.AWAIT_PAGE_VALUE: {
+    const book = storage.getBooks(userId).find((b) => b.id === ctx.bookId);
+    if (!book) {
+      setState(storage, userId, STATE.IDLE);
+      return [{ text: 'Книга не найдена.', options: keyboards.main }];
+    }
+    const n = Number(text);
+    if (!Number.isInteger(n) || n < 0) {
+      return [{ text: `Введите целое число от 0 до ${book.totalPages}.` }];
+    }
+    if (n >= book.totalPages) {
+      storage.updateBook(userId, ctx.bookId, {
+        currentPage: book.totalPages,
+        status: 'read',
+      });
+      setState(storage, userId, STATE.IDLE);
+      return [{
+        text: `✅ «${book.title}» прочитана полностью (100%). Можно оценить через /rate.`,
+        options: keyboards.main,
+      }];
+    }
+    storage.updateBook(userId, ctx.bookId, { currentPage: n });
+    const percent = storage.progress(userId, ctx.bookId);
+    setState(storage, userId, STATE.IDLE);
+    return [{
+      text: `Обновлено ✅ «${book.title}» — ${n}/${book.totalPages} стр. (${percent}%)`,
+      options: keyboards.main,
+    }];
+  }
   case STATE.AWAIT_RATE_BOOK: {
     const v = parseBookId(text);
     if (!v.ok) return [{ text: v.error }];
@@ -224,6 +291,11 @@ export function handleCallback({ data, userId, storage }) {
   }
 
   if (data.startsWith('filter:')) {
+    if (state !== STATE.AWAIT_FILTER) {
+      return [{
+        text: 'Кнопка фильтра устарела. Чтобы посмотреть коллекцию, отправьте /collection.',
+      }];
+    }
     const raw = data.split(':')[1];
     const status = raw === 'all' ? null : raw;
     return buildCollectionReply(userId, storage, status);

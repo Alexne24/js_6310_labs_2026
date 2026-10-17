@@ -71,6 +71,7 @@ export class Storage {
   }
 }
 
+/* istanbul ignore next */
 function buildVkKeyboard(options) {
   if (!options || !options.reply_markup) return undefined;
   const rm = options.reply_markup;
@@ -105,6 +106,7 @@ function buildVkKeyboard(options) {
   return undefined;
 }
 
+/* istanbul ignore next */
 async function sendVk(context, replies) {
   for (const r of replies) {
     try {
@@ -118,6 +120,7 @@ async function sendVk(context, replies) {
   }
 }
 
+/* istanbul ignore next */
 export function createBot(token, storage = new Storage()) {
   const vk = new VK({ token });
 
@@ -157,6 +160,7 @@ export function createBot(token, storage = new Storage()) {
   return vk;
 }
 
+/* istanbul ignore next */
 export async function runVkBot() {
   const token = process.env.VK_GROUP_TOKEN;
   if (!token) {
