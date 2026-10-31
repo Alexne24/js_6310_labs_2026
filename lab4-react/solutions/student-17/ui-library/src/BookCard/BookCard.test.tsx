@@ -48,15 +48,17 @@ describe('BookCard', () => {
     
     expect(onStatusChange).toHaveBeenCalledWith('b1', 'read')
   })
+
   it('does not throw when status changes without callback', async () => {
     const user = userEvent.setup()
-    render(<BookCard book={book} />) // без onStatusChange
+    render(<BookCard book={book} />) // Без onStatusChange
     
     const select = screen.getByTestId('status-select-b1')
     await user.selectOptions(select, 'want')
-    expect(select).toBeInTheDocument()
     
+    expect(select).toBeInTheDocument()
   })
+
   it('marks stars as active based on rating and hover', async () => {
     const user = userEvent.setup()
     render(<BookCard book={book} />)

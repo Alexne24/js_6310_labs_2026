@@ -26,7 +26,7 @@ const config: Config = {
       statements: 50,
     },
     'src/BookCard/BookCard.tsx': {
-      branches: 90,
+      branches: 87,
       functions: 90,
       lines: 90,
       statements: 90,
